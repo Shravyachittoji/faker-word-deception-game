@@ -14,10 +14,9 @@ This project is designed to run as a lightweight single-page web app so friends 
 ## ✨ Game at a glance
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Shravyachittoji/faker-word-deception-game/main/preview.png" alt="Game preview placeholder" width="800" />
+  <img src="https://raw.github.com/Shravyachittoji/faker-word-deception-game/main/preview.png" alt="Game preview placeholder" width="800" />
 </div>
 
-> If you want to add a real screenshot later, drop it into the repo as `preview.png` and this card will automatically display it.
 
 ### 🧠 Round flow
 
