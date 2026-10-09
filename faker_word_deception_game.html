@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Faker - Realtime Multiplayer Deception Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            darkBg: '#090d16',
+            cardBg: 'rgba(20, 27, 45, 0.85)',
+            fakerRed: '#f43f5e',
+            citizenGreen: '#10b981',
+            accentViolet: '#8b5cf6',
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'float': 'float 3s ease-in-out infinite',
+            'pop-in': 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-6px)' },
+            },
+            popIn: {
+              '0%': { opacity: '0', transform: 'scale(0.85)' },
+              '100%': { opacity: '1', transform: 'scale(1)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #090d16 75%);
+      min-height: 100vh;
+      color: #f3f4f6;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .glass-card {
+      background: rgba(20, 27, 45, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+    .glow-violet {
+      box-shadow: 0 0 25px rgba(139, 92, 246, 0.3);
+    }
+    .glow-red {
+      box-shadow: 0 0 25px rgba(244, 63, 94, 0.35);
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.4);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen overflow-x-hidden font-sans pb-10">
+
+  <!-- Floating Reactions Layer -->
+  <div id="reaction-layer" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+  <header class="w-full max-w-4xl mx-auto px-4 py-4 flex items-center justify-between z-10">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="goHome()">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-pink-500 to-fakerRed flex items-center justify-center text-2xl shadow-lg animate-float">
+        🎭
+      </div>
+      <div>
+        <h1 class="text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-pink-400 to-fakerRed">
+          FAKER
+        </h1>
+        <p class="text-[10px] text-gray-400 -mt-1 font-bold uppercase tracking-widest">Realtime Deception</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Connection Status Badge -->
+      <span id="network-badge" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs font-semibold text-gray-400">
+        <span id="network-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span id="network-text">Connecting...</span>
+      </span>
+
+      <!-- Sound Toggle Button -->
+      <button id="sound-btn" onclick="toggleSound()" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/50 text-gray-300 transition flex items-center justify-center">
+        <span id="sound-icon">🔊</span>
+      </button>
+
+      <!-- Rules Button -->
+      <button onclick="openRulesModal()" class="px-3.5 py-2.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 font-bold text-xs transition flex items-center gap-1.5">
+        <span>📖</span> <span class="hidden sm:inline">How to Play</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 w-full max-w-4xl mx-auto px-4 py-2 flex flex-col justify-center items-center">
+
+    <div id="view-home" class="w-full max-w-md glass-card rounded-3xl p-6 sm:p-8 animate-pop-in space-y-6">
+      <div class="text-center space-y-1">
+        <h2 class="text-2xl font-black text-white">Join the Mind Game!</h2>
+        <p class="text-xs text-gray-400">Cross-device live multiplayer deception for 2-12 players.</p>
+      </div>
+
+      <!-- Avatar Picker -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Select Avatar</label>
+        <div id="avatar-grid" class="flex justify-between items-center gap-1.5 p-2 bg-slate-900/80 rounded-2xl border border-slate-800/80 overflow-x-auto">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Player Name -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Your Nickname</label>
+        <input type="text" id="player-name-input" maxlength="12" placeholder="Enter nickname..." 
+               class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 text-white font-medium outline-none transition" />
+      </div>
+
+      <!-- Actions -->
+      <div class="space-y-3 pt-1">
+        <button onclick="handleCreateRoom()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg glow-violet transition transform active:scale-95 flex items-center justify-center gap-2">
+          <span>✨ Create Private Room</span>
+        </button>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-800"></div>
+          <span class="flex-shrink mx-4 text-xs font-bold text-gray-500 uppercase">Or Join with Code</span>
+          <div class="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        <div class="flex gap-2">
+          <input type="text" id="room-code-input" maxlength="4" placeholder="CODE" 
+                 class="w-1/2 px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 focus:border-indigo-500 text-center font-mono font-black text-xl tracking-widest text-white uppercase outline-none" />
+          <button onclick="handleJoinRoom()" class="w-1/2 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600/50 text-white font-bold rounded-xl transition transform active:scale-95">
+            Join Room
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-lobby" class="w-full max-w-2xl glass-card rounded-3xl p-6 sm:p-8 animate-pop-in space-y-6 hidden">
+      <!-- Lobby Header -->
+      <div class="flex flex-col sm:flex-row items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-slate-800 gap-4">
+        <div>
+          <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Room Join Code</span>
+          <div class="flex items-center gap-3 mt-0.5">
+            <span id="lobby-room-code" class="text-3xl font-mono font-black text-violet-400 tracking-widest">----</span>
+            <button onclick="copyInviteLink()" class="px-3 py-1.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-xs font-bold text-violet-300 border border-violet-500/30 transition flex items-center gap-1">
+              <span>🔗</span> Copy Invite Link
+            </button>
+          </div>
+        </div>
+
+        <div class="text-center sm:text-right">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Global Cloud Sync Active
+          </span>
+          <p class="text-[11px] text-gray-400 mt-1">Share code with friends on any phone or PC!</p>
+        </div>
+      </div>
+
+      <!-- Player List -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+            <span>Players Connected</span>
+            <span id="player-count-badge" class="px-2 py-0.5 rounded-full bg-violet-600/30 text-violet-300 text-xs">0 / 12</span>
+          </h3>
+          <span id="min-player-warning" class="text-xs text-amber-400 font-semibold hidden">⚠️ Need at least 2 players</span>
+        </div>
+
+        <div id="lobby-player-list" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <!-- Populated by Firestore listener -->
+        </div>
+      </div>
+
+      <!-- Category Picker & Settings (Host Controls) -->
+      <div id="host-settings-section" class="space-y-4 pt-2 border-t border-slate-800/80">
+        <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider">Category Pack</h3>
+        <div id="category-picker" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Start Button -->
+      <div class="pt-2">
+        <button id="start-game-btn" onclick="handleStartGame()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-lg shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+          <span>🚀 Start Game</span>
+        </button>
+        <p id="waiting-for-host-msg" class="text-xs text-center text-gray-400 font-medium hidden">Waiting for room host to start the game...</p>
+      </div>
+    </div>
+
+    <div id="view-game" class="w-full max-w-2xl glass-card rounded-3xl p-6 sm:p-8 animate-pop-in space-y-6 hidden">
+      <!-- Header Timer Bar -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Category</span>
+          <h3 id="game-category-title" class="text-xl font-extrabold text-violet-400">Animals</h3>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Clue Phase</span>
+          <div id="clues-progress" class="text-lg font-mono font-black text-amber-400">0 / 0 Submitted</div>
+        </div>
+      </div>
+
+      <!-- Role Card (Secret Word Display) -->
+      <div id="role-card" class="rounded-2xl p-6 text-center transition-all duration-300 relative overflow-hidden border">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Clue Submission Form -->
+      <div id="clue-input-container" class="space-y-3">
+        <label class="text-xs font-bold text-gray-300 uppercase tracking-wider">Your Secret Clue (1 Word)</label>
+        <div class="flex gap-2">
+          <input type="text" id="clue-text-input" maxlength="20" placeholder="Type subtle clue here..." 
+                 class="flex-1 px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 focus:border-violet-500 text-white font-medium outline-none" />
+          <button onclick="handleSubmitClue()" class="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition active:scale-95">
+            Submit
+          </button>
+        </div>
+        <p class="text-[11px] text-gray-400">💡 Citizens: Prove you know the word without revealing it to the Faker. Faker: Blend in!</p>
+      </div>
+
+      <!-- Live Clues List -->
+      <div class="space-y-3 pt-2">
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Submitted Clues</h4>
+        <div id="submitted-clues-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- Populated in real-time -->
+        </div>
+      </div>
+
+      <!-- Emote Launcher -->
+      <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2 overflow-x-auto">
+        <span class="text-xs font-bold text-gray-500 uppercase">Emotes:</span>
+        <div id="emote-buttons-bar" class="flex items-center gap-2">
+          <!-- Dynamic emote buttons -->
+        </div>
+      </div>
+    </div>
+
+    <div id="view-voting" class="w-full max-w-2xl glass-card rounded-3xl p-6 sm:p-8 animate-pop-in space-y-6 hidden">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white">Find the Faker! 🕵️</h2>
+          <p class="text-xs text-gray-400">Inspect clues and tap a player to cast your secret vote.</p>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Votes Cast</span>
+          <div id="vote-progress-badge" class="text-xl font-mono font-black text-fakerRed">0 / 0</div>
+        </div>
+      </div>
+
+      <!-- Clues Review Deck -->
+      <div class="space-y-2">
+        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">All Clues</span>
+        <div id="voting-clues-summary" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <!-- Clues summary cards -->
+        </div>
+      </div>
+
+      <!-- Voting Options Grid -->
+      <div class="space-y-3 pt-2">
+        <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider">Cast Your Accusation</h3>
+        <div id="voting-players-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <!-- Player voting cards -->
+        </div>
+      </div>
+
+      <!-- Chat / Reaction Feed -->
+      <div class="pt-2 border-t border-slate-800/80 space-y-2">
+        <span class="text-xs font-bold text-gray-400 uppercase">Live Discussion Feed</span>
+        <div id="chat-messages" class="h-28 bg-slate-900/80 border border-slate-800 rounded-xl p-3 overflow-y-auto text-xs space-y-1.5">
+          <!-- Live chat messages -->
+        </div>
+        <div class="flex gap-2">
+          <input type="text" id="chat-input" placeholder="Type quick message..." maxlength="60"
+                 class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-violet-500" />
+          <button onclick="sendChatMessage()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600/50 text-xs text-white font-bold rounded-xl">
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-results" class="w-full max-w-2xl glass-card rounded-3xl p-6 sm:p-8 animate-pop-in space-y-6 hidden">
+      <div class="text-center space-y-2">
+        <div id="results-badge-banner" class="inline-block px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase">
+          Round Over
+        </div>
+        <h2 id="results-headline" class="text-3xl font-black text-white">The Faker Escaped!</h2>
+        <p id="results-subtext" class="text-xs text-gray-300"></p>
+      </div>
+
+      <!-- Reveal Card -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4 text-center">
+        <div class="grid grid-cols-2 gap-4 border-b border-slate-800 pb-4">
+          <div>
+            <span class="text-xs font-bold text-gray-400 uppercase">Secret Word</span>
+            <div id="reveal-secret-word" class="text-2xl font-black text-emerald-400 tracking-wide mt-1">???</div>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-gray-400 uppercase">The Faker</span>
+            <div id="reveal-faker-identity" class="text-2xl font-black text-fakerRed flex items-center justify-center gap-1 mt-1">???</div>
+          </div>
+        </div>
+
+        <!-- Faker Steal Word Form (Visible if Faker caught) -->
+        <div id="faker-steal-block" class="hidden space-y-3 bg-fakerRed/10 p-4 rounded-xl border border-fakerRed/30">
+          <p class="text-xs text-fakerRed font-bold uppercase tracking-wider">🎯 Faker's Chance to Steal Points!</p>
+          <p class="text-xs text-gray-300">You were caught! Select the secret word from options to steal 2 points:</p>
+          <div id="faker-steal-options" class="grid grid-cols-2 gap-2">
+            <!-- Dynamic word choices -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider">Global Scoreboard</h3>
+        <div id="leaderboard-list" class="space-y-2">
+          <!-- Dynamic Leaderboard Items -->
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="pt-2">
+        <button id="next-round-btn" onclick="handleStartGame()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-lg shadow-lg glow-violet transition transform active:scale-95 flex items-center justify-center gap-2">
+          <span>🔄 Next Round</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="rules-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden animate-pop-in">
+    <div class="glass-card max-w-lg w-full rounded-3xl p-6 sm:p-8 space-y-5 border border-slate-700/60 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h2 class="text-xl font-black text-white flex items-center gap-2">
+          <span>📖 How to Play Faker</span>
+        </h2>
+        <button onclick="closeRulesModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-gray-300 font-bold flex items-center justify-center">
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs sm:text-sm text-gray-300 leading-relaxed">
+        <div class="flex gap-3 bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800">
+          <div class="text-2xl">🎭</div>
+          <div>
+            <h4 class="font-bold text-violet-400 text-sm">1. Roles</h4>
+            <p>Citizens receive the **Secret Word**. The **Faker** receives only the category name!</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800">
+          <div class="text-2xl">💡</div>
+          <div>
+            <h4 class="font-bold text-amber-400 text-sm">2. Submit Clues</h4>
+            <p>Everyone submits a subtle 1-word clue. Citizens prove they know the word; the Faker blends in!</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800">
+          <div class="text-2xl">🗳️</div>
+          <div>
+            <h4 class="font-bold text-fakerRed text-sm">3. Vote the Imposter</h4>
+            <p>Discuss the clues and tap a player to secretly cast your vote on who gave a fake clue.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800">
+          <div class="text-2xl">🏆</div>
+          <div>
+            <h4 class="font-bold text-emerald-400 text-sm">4. Scoring & Stealing</h4>
+            <ul class="list-disc list-inside space-y-1 mt-1">
+              <li>Faker escapes undetected: **Faker gets +2 pts**.</li>
+              <li>Faker caught: **Citizens get +1 pt**.</li>
+              <li>*Bonus*: Caught Faker can guess the secret word from options to **steal +2 pts**!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="closeRulesModal()" class="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition">
+        Got It, Let's Play!
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global variables & Firebase Config setup
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'faker-game-default';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' 
+      ? JSON.parse(__firebase_config) 
+      : {
+          apiKey: "AIzaSyDemoPlaceholderOnly",
+          authDomain: "demo-app.firebaseapp.com",
+          projectId: "demo-app",
+          storageBucket: "demo-app.appspot.com",
+          messagingSenderId: "000000000",
+          appId: "1:000000000:web:000000000"
+        };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    /* WORD PACKS DATABASE */
+    const WORD_DATABASE = {
+      Animals: ["Elephant", "Penguin", "Kangaroo", "Giraffe", "Octopus", "Cheetah", "Owl", "Dolphin", "Chameleon", "Gorilla", "Sloth", "Flamingo"],
+      Foods: ["Pizza", "Sushi", "Taco", "Pancake", "Spaghetti", "Burger", "Croissant", "Curry", "Donut", "Guacamole", "Waffle", "Paella"],
+      Movies: ["Titanic", "Avatar", "Inception", "Gladiator", "Matrix", "Jaws", "Frozen", "Shrek", "Interstellar", "Jurassic Park", "Batman"],
+      Landmarks: ["Airport", "Hospital", "Library", "Beach", "Museum", "Cinema", "Eiffel Tower", "Subway", "Pyramids", "Colosseum", "Volcano"],
+      Tech: ["Smartphone", "Robot", "Satellite", "Drone", "VR Headset", "Keyboard", "Microchip", "Laser", "Hologram", "Processor"],
+      Superheroes: ["Spider-Man", "Iron Man", "Wonder Woman", "Batman", "Thor", "Superman", "Wolverine", "Flash", "Black Panther"]
+    };
+
+    const AVATARS = ['🦊', '🐼', '🦁', '🐸', '🦄', '🤖', '👾', '🐱', '🐶', '🐯'];
+    const EMOTES = ['🔍', '🤨', '👀', '🤫', '😱', '🔥', '💀', '🤡'];
+
+    /* GAME STATE VARIABLES */
+    let currentUser = null;
+    let localPlayer = {
+      id: localStorage.getItem('faker_player_id') || crypto.randomUUID(),
+      name: '',
+      avatar: '🦊',
+      score: 0
+    };
+    localStorage.setItem('faker_player_id', localPlayer.id);
+
+    let currentRoomCode = null;
+    let roomUnsubscribe = null;
+    let currentRoomData = null;
+
+    /* SOUND SYNTHESIZER */
+    let audioCtx = null;
+    let soundMuted = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    window.toggleSound = () => {
+      soundMuted = !soundMuted;
+      document.getElementById('sound-icon').innerText = soundMuted ? '🔇' : '🔊';
+    };
+
+    function playSound(type) {
+      if (soundMuted) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'click') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } else if (type === 'success') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.setValueAtTime(450, now + 0.08);
+        osc.frequency.setValueAtTime(600, now + 0.16);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'buzzer') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.linearRampToValueAtTime(100, now + 0.25);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+    }
+
+    /* AUTHENTICATION SETUP */
+    async function initAuth() {
+      const updateNetworkStatus = (status, color) => {
+        const dot = document.getElementById('network-dot');
+        const text = document.getElementById('network-text');
+        if (dot && text) {
+          dot.className = `w-2 h-2 rounded-full ${color}`;
+          text.innerText = status;
+        }
+      };
+
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          currentUser = (await signInWithCustomToken(auth, __initial_auth_token)).user;
+        } else {
+          currentUser = (await signInAnonymously(auth)).user;
+        }
+        updateNetworkStatus('Cloud Live', 'bg-emerald-400');
+        
+        // Auto Join via URL search param ?room=CODE
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomParam = urlParams.get('room');
+        if (roomParam) {
+          document.getElementById('room-code-input').value = roomParam.toUpperCase();
+        }
+      } catch (err) {
+        console.error("Auth initialization error:", err);
+        updateNetworkStatus('Offline Mode', 'bg-amber-400');
+      }
+    }
+
+    function getRoomRef(code) {
+      // RULE 1 Strict Path Implementation
+      return doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
+    }
+
+    function generateCode() {
+      return Math.random().toString(36).substring(2, 6).toUpperCase();
+    }
+
+    window.handleCreateRoom = async () => {
+      playSound('click');
+      const name = document.getElementById('player-name-input').value.trim();
+      if (!name) return alert('Please enter a nickname!');
+
+      localPlayer.name = name;
+      currentRoomCode = generateCode();
+
+      const initialRoomData = {
+        code: currentRoomCode,
+        hostId: localPlayer.id,
+        phase: 'LOBBY', // LOBBY, CLUES, VOTING, REVEAL
+        category: 'Animals',
+        secretWord: '',
+        fakerId: '',
+        players: {
+          [localPlayer.id]: localPlayer
+        },
+        clues: {},
+        votes: {},
+        chat: [],
+        fakerGuessedCorrectly: null
+      };
+
+      if (!currentUser) await initAuth();
+      if (!currentUser) return;
+
+      try {
+        await setDoc(getRoomRef(currentRoomCode), initialRoomData);
+        subscribeToRoom(currentRoomCode);
+        showView('view-lobby');
+      } catch (e) {
+        console.error("Error creating room:", e);
+        alert("Failed to create room. Please try again.");
+      }
+    };
+
+    window.handleJoinRoom = async () => {
+      playSound('click');
+      const name = document.getElementById('player-name-input').value.trim();
+      const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+
+      if (!name) return alert('Please enter a nickname!');
+      if (!code || code.length !== 4) return alert('Please enter a valid 4-letter room code!');
+
+      localPlayer.name = name;
+      currentRoomCode = code;
+
+      if (!currentUser) await initAuth();
+      if (!currentUser) return;
+
+      try {
+        const roomSnap = await getDoc(getRoomRef(currentRoomCode));
+        if (!roomSnap.exists()) {
+          return alert('Room not found! Check the 4-letter code.');
+        }
+
+        const roomData = roomSnap.data();
+        roomData.players[localPlayer.id] = localPlayer;
+
+        await updateDoc(getRoomRef(currentRoomCode), {
+          [`players.${localPlayer.id}`]: localPlayer
+        });
+
+        subscribeToRoom(currentRoomCode);
+        showView('view-lobby');
+      } catch (e) {
+        console.error("Error joining room:", e);
+        alert("Error joining room.");
+      }
+    };
+
+    function subscribeToRoom(code) {
+      if (roomUnsubscribe) roomUnsubscribe();
+
+      // RULE 1 & Error Callback requirement
+      roomUnsubscribe = onSnapshot(getRoomRef(code), (docSnap) => {
+        if (!docSnap.exists()) return;
+        currentRoomData = docSnap.data();
+        
+        // Automatic Host Migration if host leaves
+        if (!currentRoomData.players[currentRoomData.hostId]) {
+          const remainingIds = Object.keys(currentRoomData.players);
+          if (remainingIds.length > 0) {
+            currentRoomData.hostId = remainingIds[0];
+            updateDoc(getRoomRef(code), { hostId: remainingIds[0] });
+          }
+        }
+
+        renderCurrentPhase();
+      }, (error) => {
+        console.error("Snapshot error:", error);
+      });
+    }
+
+    function renderCurrentPhase() {
+      if (!currentRoomData) return;
+
+      if (currentRoomData.phase === 'LOBBY') {
+        showView('view-lobby');
+        renderLobbyUI();
+      } else if (currentRoomData.phase === 'CLUES') {
+        showView('view-game');
+        renderCluesUI();
+      } else if (currentRoomData.phase === 'VOTING') {
+        showView('view-voting');
+        renderVotingUI();
+      } else if (currentRoomData.phase === 'REVEAL') {
+        showView('view-results');
+        renderResultsUI();
+      }
+    }
+
+    function renderLobbyUI() {
+      document.getElementById('lobby-room-code').innerText = currentRoomData.code;
+      
+      const playersArr = Object.values(currentRoomData.players || {});
+      document.getElementById('player-count-badge').innerText = `${playersArr.length} / 12`;
+
+      const playerList = document.getElementById('lobby-player-list');
+      playerList.innerHTML = '';
+
+      playersArr.forEach(p => {
+        const isMe = p.id === localPlayer.id;
+        const isHost = p.id === currentRoomData.hostId;
+        const card = document.createElement('div');
+        card.className = `bg-slate-900/80 border ${isMe ? 'border-violet-500/80 bg-violet-950/20' : 'border-slate-800'} rounded-2xl p-3 flex flex-col items-center justify-center space-y-1 relative`;
+        card.innerHTML = `
+          ${isHost ? '<span class="absolute top-1.5 right-1.5 text-xs" title="Room Host">👑</span>' : ''}
+          <span class="text-2xl">${p.avatar}</span>
+          <span class="text-xs font-bold text-gray-200 truncate w-full text-center">${p.name}</span>
+          ${isMe ? '<span class="text-[10px] text-violet-400 font-semibold">(You)</span>' : ''}
+        `;
+        playerList.appendChild(card);
+      });
+
+      // Host controls visibility
+      const isHostMe = localPlayer.id === currentRoomData.hostId;
+      if (isHostMe) {
+        document.getElementById('host-settings-section').classList.remove('hidden');
+        document.getElementById('start-game-btn').classList.remove('hidden');
+        document.getElementById('waiting-for-host-msg').classList.add('hidden');
+      } else {
+        document.getElementById('host-settings-section').classList.add('hidden');
+        document.getElementById('start-game-btn').classList.add('hidden');
+        document.getElementById('waiting-for-host-msg').classList.remove('hidden');
+      }
+
+      renderCategoryPicker();
+    }
+
+    function renderCategoryPicker() {
+      const picker = document.getElementById('category-picker');
+      picker.innerHTML = '';
+      Object.keys(WORD_DATABASE).forEach(cat => {
+        const isSelected = currentRoomData.category === cat;
+        const btn = document.createElement('button');
+        btn.className = `py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-between ${isSelected ? 'bg-violet-600/30 border-violet-500 text-violet-300' : 'bg-slate-900 border-slate-800 text-gray-400 hover:text-white'}`;
+        btn.innerHTML = `<span>${cat}</span> ${isSelected ? '✓' : ''}`;
+        btn.onclick = async () => {
+          if (localPlayer.id !== currentRoomData.hostId) return;
+          playSound('click');
+          await updateDoc(getRoomRef(currentRoomCode), { category: cat });
+        };
+        picker.appendChild(btn);
+      });
+    }
+
+    window.handleStartGame = async () => {
+      if (localPlayer.id !== currentRoomData.hostId) return;
+
+      const playerIds = Object.keys(currentRoomData.players);
+      if (playerIds.length < 2) {
+        playSound('buzzer');
+        document.getElementById('min-player-warning').classList.remove('hidden');
+        return;
+      }
+
+      playSound('success');
+
+      const words = WORD_DATABASE[currentRoomData.category];
+      const secretWord = words[Math.floor(Math.random() * words.length)];
+      const fakerId = playerIds[Math.floor(Math.random() * playerIds.length)];
+
+      await updateDoc(getRoomRef(currentRoomCode), {
+        phase: 'CLUES',
+        secretWord: secretWord,
+        fakerId: fakerId,
+        clues: {},
+        votes: {},
+        chat: [],
+        fakerGuessedCorrectly: null
+      });
+    };
+
+    function renderCluesUI() {
+      document.getElementById('game-category-title').innerText = currentRoomData.category;
+      
+      const isFaker = (localPlayer.id === currentRoomData.fakerId);
+      const roleCard = document.getElementById('role-card');
+
+      if (isFaker) {
+        roleCard.className = 'rounded-2xl p-6 text-center border border-fakerRed/50 bg-fakerRed/10 glow-red animate-pulse-slow';
+        roleCard.innerHTML = `
+          <div class="text-xs font-extrabold text-fakerRed uppercase tracking-widest">Secret Role</div>
+          <div class="text-3xl font-black text-white mt-1">🎭 YOU ARE THE FAKER</div>
+          <p class="text-xs text-gray-300 mt-2">You don't know the secret word! Read clues carefully and blend in.</p>
+        `;
+      } else {
+        roleCard.className = 'rounded-2xl p-6 text-center border border-emerald-500/50 bg-emerald-500/10 glow-violet';
+        roleCard.innerHTML = `
+          <div class="text-xs font-extrabold text-emerald-400 uppercase tracking-widest">Secret Word</div>
+          <div class="text-3xl font-black text-white mt-1">🔑 ${currentRoomData.secretWord}</div>
+          <p class="text-xs text-gray-300 mt-2">Submit a subtle clue to prove you know the secret word!</p>
+        `;
+      }
+
+      const clues = currentRoomData.clues || {};
+      const submittedCount = Object.keys(clues).length;
+      const totalCount = Object.keys(currentRoomData.players).length;
+      document.getElementById('clues-progress').innerText = `${submittedCount} / ${totalCount} Submitted`;
+
+      const hasSubmitted = !!clues[localPlayer.id];
+      const clueInputContainer = document.getElementById('clue-input-container');
+      if (hasSubmitted) {
+        clueInputContainer.classList.add('opacity-50', 'pointer-events-none');
+      } else {
+        clueInputContainer.classList.remove('opacity-50', 'pointer-events-none');
+      }
+
+      // Render submitted clues
+      const cluesList = document.getElementById('submitted-clues-list');
+      cluesList.innerHTML = '';
+      Object.entries(currentRoomData.players).forEach(([pId, player]) => {
+        const clueText = clues[pId];
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between';
+        
+        if (clueText) {
+          card.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span>${player.avatar}</span>
+              <span class="text-xs font-bold text-gray-300">${player.name}</span>
+            </div>
+            <span class="text-sm font-black text-violet-300 bg-violet-950/60 px-2.5 py-1 rounded-lg border border-violet-800/50">${clueText}</span>
+          `;
+        } else {
+          card.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span>${player.avatar}</span>
+              <span class="text-xs font-bold text-gray-500">${player.name}</span>
+            </div>
+            <span class="text-xs italic text-gray-500">Thinking...</span>
+          `;
+        }
+        cluesList.appendChild(card);
+      });
+
+      // Host transitions to voting when all clues in
+      if (localPlayer.id === currentRoomData.hostId && submittedCount === totalCount && totalCount > 0) {
+        updateDoc(getRoomRef(currentRoomCode), { phase: 'VOTING' });
+      }
+    }
+
+    window.handleSubmitClue = async () => {
+      const input = document.getElementById('clue-text-input');
+      const text = input.value.trim();
+      if (!text) return alert('Please enter a clue!');
+
+      playSound('click');
+      input.value = '';
+
+      await updateDoc(getRoomRef(currentRoomCode), {
+        [`clues.${localPlayer.id}`]: text
+      });
+    };
+
+    function renderVotingUI() {
+      // Clues Summary Deck
+      const summary = document.getElementById('voting-clues-summary');
+      summary.innerHTML = '';
+      Object.entries(currentRoomData.clues || {}).forEach(([pId, clue]) => {
+        const p = currentRoomData.players[pId];
+        if (!p) return;
+        const item = document.createElement('div');
+        item.className = 'bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between text-xs';
+        item.innerHTML = `<span>${p.avatar} <b>${p.name}</b></span> <span class="font-bold text-violet-400">"${clue}"</span>`;
+        summary.appendChild(item);
+      });
+
+      // Voting Cards
+      const votes = currentRoomData.votes || {};
+      const votesCastCount = Object.keys(votes).length;
+      const totalCount = Object.keys(currentRoomData.players).length;
+      document.getElementById('vote-progress-badge').innerText = `${votesCastCount} / ${totalCount}`;
+
+      const myVote = votes[localPlayer.id];
+      const grid = document.getElementById('voting-players-grid');
+      grid.innerHTML = '';
+
+      Object.values(currentRoomData.players).forEach(p => {
+        const isMe = p.id === localPlayer.id;
+        const isSelected = myVote === p.id;
+        const card = document.createElement('button');
+        card.disabled = isMe || !!myVote;
+        card.className = `p-4 rounded-2xl border text-center transition flex flex-col items-center gap-1.5 relative ${isSelected ? 'bg-fakerRed/20 border-fakerRed glow-red' : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'}`;
+        card.onclick = () => handleVotePlayer(p.id);
+
+        card.innerHTML = `
+          <span class="text-3xl">${p.avatar}</span>
+          <span class="text-xs font-bold text-gray-200">${p.name}</span>
+          ${isMe ? '<span class="text-[10px] text-gray-500">(You)</span>' : ''}
+          ${isSelected ? '<span class="text-xs text-fakerRed font-bold mt-1">✓ Voted</span>' : ''}
+        `;
+        grid.appendChild(card);
+      });
+
+      renderChat();
+
+      // Host triggers reveal when all votes submitted
+      if (localPlayer.id === currentRoomData.hostId && votesCastCount === totalCount && totalCount > 0) {
+        tallyAndRevealResults();
+      }
+    }
+
+    window.handleVotePlayer = async (targetId) => {
+      playSound('click');
+      await updateDoc(getRoomRef(currentRoomCode), {
+        [`votes.${localPlayer.id}`]: targetId
+      });
+    };
+
+    async function tallyAndRevealResults() {
+      const votes = currentRoomData.votes || {};
+      const voteCounts = {};
+      Object.values(votes).forEach(target => {
+        voteCounts[target] = (voteCounts[target] || 0) + 1;
+      });
+
+      let highestVotes = 0;
+      let accusedId = null;
+      let tie = false;
+
+      Object.entries(voteCounts).forEach(([pId, count]) => {
+        if (count > highestVotes) {
+          highestVotes = count;
+          accusedId = pId;
+          tie = false;
+        } else if (count === highestVotes) {
+          tie = true;
+        }
+      });
+
+      const caught = !tie && accusedId === currentRoomData.fakerId;
+      const updatedPlayers = { ...currentRoomData.players };
+
+      // Scoring
+      if (caught) {
+        Object.keys(updatedPlayers).forEach(id => {
+          if (id !== currentRoomData.fakerId) updatedPlayers[id].score = (updatedPlayers[id].score || 0) + 1;
+        });
+      } else {
+        if (updatedPlayers[currentRoomData.fakerId]) {
+          updatedPlayers[currentRoomData.fakerId].score = (updatedPlayers[currentRoomData.fakerId].score || 0) + 2;
+        }
+      }
+
+      await updateDoc(getRoomRef(currentRoomCode), {
+        phase: 'REVEAL',
+        fakerCaught: caught,
+        accusedId: tie ? null : accusedId,
+        players: updatedPlayers
+      });
+    }
+
+    function renderResultsUI() {
+      document.getElementById('reveal-secret-word').innerText = currentRoomData.secretWord;
+      const fakerObj = currentRoomData.players[currentRoomData.fakerId];
+      document.getElementById('reveal-faker-identity').innerHTML = fakerObj ? `${fakerObj.avatar} ${fakerObj.name}` : 'Unknown';
+
+      const headlineEl = document.getElementById('results-headline');
+      const subtextEl = document.getElementById('results-subtext');
+      const bannerEl = document.getElementById('results-badge-banner');
+
+      if (currentRoomData.fakerCaught) {
+        headlineEl.innerText = '🎉 The Faker was Caught!';
+        subtextEl.innerText = 'Citizens successfully unmasked the imposter!';
+        bannerEl.className = 'inline-block px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      } else {
+        headlineEl.innerText = '😈 The Faker Escaped!';
+        subtextEl.innerText = 'The Faker fooled the Citizens and stole points!';
+        bannerEl.className = 'inline-block px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase bg-fakerRed/20 text-fakerRed border border-fakerRed/30';
+      }
+
+      // Faker Steal Word Option
+      const isFakerMe = (localPlayer.id === currentRoomData.fakerId);
+      const fakerStealBlock = document.getElementById('faker-steal-block');
+
+      if (currentRoomData.fakerCaught && isFakerMe && currentRoomData.fakerGuessedCorrectly === null) {
+        fakerStealBlock.classList.remove('hidden');
+        renderFakerWordChoices();
+      } else {
+        fakerStealBlock.classList.add('hidden');
+      }
+
+      // Leaderboard
+      const leaderboard = document.getElementById('leaderboard-list');
+      leaderboard.innerHTML = '';
+      const sortedPlayers = Object.values(currentRoomData.players || {}).sort((a,b) => b.score - a.score);
+      sortedPlayers.forEach((p, idx) => {
+        const item = document.createElement('div');
+        item.className = 'bg-slate-900/80 border border-slate-800 p-3 rounded-xl flex items-center justify-between text-sm';
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="font-bold text-gray-500 w-5">#${idx + 1}</span>
+            <span class="text-xl">${p.avatar}</span>
+            <span class="font-bold text-white">${p.name} ${p.id === currentRoomData.fakerId ? '<span class="text-xs text-fakerRed">(Faker)</span>' : ''}</span>
+          </div>
+          <span class="font-black text-emerald-400">${p.score || 0} pts</span>
+        `;
+        leaderboard.appendChild(item);
+      });
+
+      // Next Round Button Host Check
+      if (localPlayer.id === currentRoomData.hostId) {
+        document.getElementById('next-round-btn').classList.remove('hidden');
+      } else {
+        document.getElementById('next-round-btn').classList.add('hidden');
+      }
+    }
+
+    function renderFakerWordChoices() {
+      const optionsContainer = document.getElementById('faker-steal-options');
+      optionsContainer.innerHTML = '';
+      const pack = WORD_DATABASE[currentRoomData.category];
+      const shuffled = [...pack].sort(() => 0.5 - Math.random()).slice(0, 4);
+      if (!shuffled.includes(currentRoomData.secretWord)) {
+        shuffled[0] = currentRoomData.secretWord;
+      }
+      shuffled.sort(() => 0.5 - Math.random());
+
+      shuffled.forEach(wordChoice => {
+        const btn = document.createElement('button');
+        btn.className = 'p-2.5 rounded-xl bg-slate-900 border border-fakerRed/40 text-xs font-bold text-white hover:bg-fakerRed hover:border-fakerRed transition';
+        btn.innerText = wordChoice;
+        btn.onclick = () => handleFakerStealGuess(wordChoice);
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    async function handleFakerStealGuess(chosenWord) {
+      const isCorrect = (chosenWord === currentRoomData.secretWord);
+      playSound(isCorrect ? 'success' : 'buzzer');
+
+      const updatedPlayers = { ...currentRoomData.players };
+      if (isCorrect && updatedPlayers[localPlayer.id]) {
+        updatedPlayers[localPlayer.id].score = (updatedPlayers[localPlayer.id].score || 0) + 2;
+      }
+
+      await updateDoc(getRoomRef(currentRoomCode), {
+        fakerGuessedCorrectly: isCorrect,
+        players: updatedPlayers
+      });
+    }
+
+    window.sendChatMessage = async () => {
+      const input = document.getElementById('chat-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      playSound('click');
+      input.value = '';
+
+      const chatList = currentRoomData.chat || [];
+      chatList.push({ sender: localPlayer.name, avatar: localPlayer.avatar, text: msg });
+
+      await updateDoc(getRoomRef(currentRoomCode), { chat: chatList });
+    };
+
+    function renderChat() {
+      const container = document.getElementById('chat-messages');
+      container.innerHTML = '';
+      (currentRoomData.chat || []).forEach(c => {
+        const line = document.createElement('div');
+        line.innerHTML = `<span class="text-gray-400">${c.avatar} <b>${c.sender}:</b></span> <span class="text-gray-200">${c.text}</span>`;
+        container.appendChild(line);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function spawnFloatingReaction(avatar, emoji) {
+      const layer = document.getElementById('reaction-layer');
+      const el = document.createElement('div');
+      const startX = 15 + Math.random() * 70;
+      el.className = 'absolute text-3xl font-bold transition-all duration-1000 pointer-events-none';
+      el.style.left = startX + 'vw';
+      el.style.bottom = '10px';
+      el.innerText = `${avatar} ${emoji}`;
+      layer.appendChild(el);
+
+      let bottom = 10;
+      const interval = setInterval(() => {
+        bottom += 5;
+        el.style.bottom = bottom + 'px';
+        if (bottom > 420) {
+          clearInterval(interval);
+          el.remove();
+        }
+      }, 20);
+    }
+
+    window.copyInviteLink = () => {
+      playSound('click');
+      const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
+      document.execCommand('copy');
+      alert(`Room Link copied to clipboard:\n${url}`);
+    };
+
+    function showView(viewId) {
+      ['view-home', 'view-lobby', 'view-game', 'view-voting', 'view-results'].forEach(v => {
+        document.getElementById(v).classList.add('hidden');
+      });
+      document.getElementById(viewId).classList.remove('hidden');
+    }
+
+    window.openRulesModal = () => {
+      playSound('click');
+      document.getElementById('rules-modal').classList.remove('hidden');
+    };
+
+    window.closeRulesModal = () => {
+      playSound('click');
+      document.getElementById('rules-modal').classList.add('hidden');
+    };
+
+    window.goHome = () => {
+      playSound('click');
+      showView('view-home');
+    };
+
+    // DOM Ready Setup
+    window.addEventListener('DOMContentLoaded', () => {
+      initAuth();
+
+      // Avatar setup
+      const avatarGrid = document.getElementById('avatar-grid');
+      AVATARS.forEach((av, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `w-9 h-9 rounded-xl text-xl flex items-center justify-center transition border ${idx === 0 ? 'bg-violet-600/40 border-violet-400 scale-105' : 'bg-slate-800/60 border-slate-700/50 opacity-70 hover:opacity-100'}`;
+        btn.innerText = av;
+        btn.onclick = () => {
+          playSound('click');
+          localPlayer.avatar = av;
+          Array.from(avatarGrid.children).forEach(c => c.className = 'w-9 h-9 rounded-xl text-xl flex items-center justify-center transition border bg-slate-800/60 border-slate-700/50 opacity-70 hover:opacity-100');
+          btn.className = 'w-9 h-9 rounded-xl text-xl flex items-center justify-center transition border bg-violet-600/40 border-violet-400 scale-105';
+        };
+        avatarGrid.appendChild(btn);
+      });
+
+      // Emotes bar
+      const bar = document.getElementById('emote-buttons-bar');
+      EMOTES.forEach(e => {
+        const btn = document.createElement('button');
+        btn.className = 'px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/50 text-base transition transform active:scale-125';
+        btn.innerText = e;
+        btn.onclick = () => {
+          playSound('click');
+          spawnFloatingReaction(localPlayer.avatar, e);
+        };
+        bar.appendChild(btn);
+      });
+
+      // Default random nickname
+      const defaultNames = ['AgentX', 'MysteryPlayer', 'ShadowNinja', 'SlyFox', 'DetectivePik', 'CipherKey'];
+      const randomName = defaultNames[Math.floor(Math.random() * defaultNames.length)] + Math.floor(Math.random() * 89 + 10);
+      document.getElementById('player-name-input').value = randomName;
+    });
+  </script>
+</body>
+</html>
